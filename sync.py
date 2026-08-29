@@ -11,10 +11,17 @@ from googleapiclient.http import MediaFileUpload
 # Drive API scope
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 
+# Project paths (Absolute paths for global CLI execution)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TOKEN_PATH = os.path.join(BASE_DIR, 'token.json')
+CREDS_PATH = os.path.join(BASE_DIR, 'credentials.json')
+
 # Instance and directory settings
 INSTANCE_NAME = "GTNH 2.9-Beta2"
 BACKUP_DIR = os.path.expanduser(f"~/.local/share/PrismLauncher/instances/{INSTANCE_NAME}/.minecraft/backups/")
-DRIVE_FOLDER_ID = "COLE_O_SEU_ID_AQUI" # Keep your ID here
+
+# IMPORTANT: Paste your actual Google Drive folder ID below!
+DRIVE_FOLDER_ID = "1G13EJRk4Y4jGRz5dV-E-AmHZBi7dEHni" 
 
 def get_latest_backup(directory):
     """Finds the most recent .zip file in the backup directory."""
@@ -33,16 +40,16 @@ def generate_new_name():
 def authenticate_gdrive():
     """Handles Google Drive OAuth2 authentication."""
     creds = None
-    if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+    if os.path.exists(TOKEN_PATH):
+        creds = Credentials.from_authorized_user_file(TOKEN_PATH, SCOPES)
     
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+            flow = InstalledAppFlow.from_client_secrets_file(CREDS_PATH, SCOPES)
             creds = flow.run_local_server(port=0)
-        with open('token.json', 'w') as token:
+        with open(TOKEN_PATH, 'w') as token:
             token.write(creds.to_json())
             
     return build('drive', 'v3', credentials=creds)
