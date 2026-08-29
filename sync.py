@@ -6,6 +6,9 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+import subprocess
+
+DRIVE_FOLDER_ID = "1G13EJRk4Y4jGRz5dV-E-AmHZBi7dEHni"
 
 # Escopo restrito: o script só pode interagir com arquivos que ele mesmo criar
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
@@ -45,12 +48,29 @@ def authenticate_gdrive():
 
 def upload_to_drive(service, file_path, new_name):
     # O 'name' aqui altera o nome do arquivo diretamente na nuvem
-    file_metadata = {'name': new_name}
+    file_metadata = {
+        'name': new_name,
+        'parents': [DRIVE_FOLDER_ID]
+    }
     media = MediaFileUpload(file_path, mimetype='application/zip', resumable=True)
     
-    print(f"\n[Cloud] Iniciando upload de {new_name}...")
+    print(f"\n[Cloud] Iniciando upload de {new_name} para a pasta específica...")
     file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
     print(f"[Cloud] Sucesso! ID no Drive: {file.get('id')}")
+
+def notify_hyprland(title, message):
+    """Envia uma notificação nativa para o desktop"""
+    try:
+        # -t 5000 define a duração para 5 segundos
+        subprocess.run([
+            "notify-send", 
+            "-t", "5000", 
+            "-a", "GTNH Cloud Sync", 
+            title, 
+            message
+        ])
+    except Exception as e:
+        print(f"Erro ao enviar notificação: {e}")
 
 if __name__ == "__main__":
     print("Iniciando varredura local...")
@@ -63,3 +83,22 @@ if __name__ == "__main__":
         # Inicia a conexão com o Google
         service = authenticate_gdrive()
         upload_to_drive(service, latest_zip, new_filename)
+
+if __name__ == "__main__":
+    print("Iniciando varredura local...")
+    latest_zip = get_latest_backup(BACKUP_DIR)
+    
+    if latest_zip:
+        new_filename = generate_new_name()
+        print(f"-> Último backup local encontrado: {os.path.basename(latest_zip)}")
+        
+        # Inicia a conexão e o upload
+        service = authenticate_gdrive()
+        upload_to_drive(service, latest_zip, new_filename)
+        
+        # Dispara a notificação de sucesso no Hyprland
+        notify_hyprland("Backup Concluído!", f"Arquivo {new_filename} enviado para o Drive com sucesso.")
+        print("\nProcesso concluído com sucesso!")
+    else:
+        # Notifica caso não encontre nenhum arquivo
+        notify_hyprland("Falha no Backup", "Nenhum arquivo .zip encontrado na pasta da instância.")
