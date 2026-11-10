@@ -53,30 +53,31 @@ class TestComputeMd5:
 
 
 class TestIsBackupAlreadyUploaded:
-    def test_returns_existing_file_when_md5_matches(self, tmp_path):
+    @patch("sync.list_remote_backups")
+    def test_returns_existing_file_when_md5_matches(self, mock_list, tmp_path):
         backup_file = tmp_path / "backup.zip"
         backup_file.write_bytes(b"identical-backup-content")
         expected_md5 = hashlib.md5(b"identical-backup-content").hexdigest()
 
         mock_service = MagicMock()
-        mock_list = mock_service.files.return_value.list
-        mock_list.return_value.execute.return_value = {
-            "files": [{"id": "drive_123", "name": "10-11-26-GTNH.zip", "md5Checksum": expected_md5}]
-        }
+        mock_list.return_value = [
+            {"id": "drive_123", "name": "10-11-26-GTNH.zip", "md5Checksum": expected_md5}
+        ]
 
         result = sync.is_backup_already_uploaded(mock_service, str(backup_file), folder_id="folder_abc")
 
         assert result == {"id": "drive_123", "name": "10-11-26-GTNH.zip", "md5Checksum": expected_md5}
-        called_query = mock_list.call_args.kwargs["q"]
-        assert "'folder_abc' in parents" in called_query
-        assert f"md5Checksum = '{expected_md5}'" in called_query
+        mock_list.assert_called_once_with(mock_service, folder_id="folder_abc")
 
-    def test_returns_none_when_no_matching_file_on_drive(self, tmp_path):
+    @patch("sync.list_remote_backups")
+    def test_returns_none_when_no_matching_file_on_drive(self, mock_list, tmp_path):
         backup_file = tmp_path / "backup.zip"
         backup_file.write_bytes(b"new-backup-content")
 
         mock_service = MagicMock()
-        mock_service.files.return_value.list.return_value.execute.return_value = {"files": []}
+        mock_list.return_value = [
+            {"id": "drive_other", "name": "other.zip", "md5Checksum": "different_md5"}
+        ]
 
         result = sync.is_backup_already_uploaded(mock_service, str(backup_file), folder_id="folder_abc")
         assert result is None

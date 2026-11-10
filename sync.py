@@ -65,22 +65,11 @@ def compute_md5(file_path):
 
 def is_backup_already_uploaded(service, file_path, folder_id=None):
     """Checks if a file with the exact same MD5 checksum already exists in the Drive folder."""
-    target_folder = folder_id if folder_id is not None else DRIVE_FOLDER_ID
     local_md5 = compute_md5(file_path)
-    query = (
-        f"'{target_folder}' in parents and "
-        f"md5Checksum = '{local_md5}' and "
-        f"trashed = false"
-    )
-    response = service.files().list(
-        q=query,
-        spaces='drive',
-        fields='files(id, name, md5Checksum)',
-        pageSize=1
-    ).execute()
-    files = response.get('files', [])
-    if files:
-        return files[0]
+    remote_files = list_remote_backups(service, folder_id=folder_id)
+    for remote in remote_files:
+        if remote.get('md5Checksum') == local_md5:
+            return remote
     return None
 
 
@@ -162,7 +151,7 @@ def list_remote_backups(service, folder_id=None):
         response = service.files().list(
             q=query,
             spaces='drive',
-            fields='nextPageToken, files(id, name, createdTime, size)',
+            fields='nextPageToken, files(id, name, createdTime, size, md5Checksum)',
             orderBy='createdTime desc',
             pageSize=100,
             pageToken=page_token
