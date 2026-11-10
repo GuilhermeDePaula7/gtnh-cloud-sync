@@ -14,7 +14,9 @@ Built for Linux environments, it features automated timestamp formatting, data r
 
 * **🔍 Automated Discovery:** Scans the Prism Launcher directory for the most recent `.zip` backup.
 * **🏷️ Smart Renaming:** Automatically formats the uploaded file as `DD-MM-YY-InstanceName.zip`.
-* **☁️ Google Drive Integration:** Utilizes Google OAuth2 for secure, headless uploads to a specific Drive folder.
+* **⚡ Duplicate Detection:** Computes local file MD5 hash to prevent duplicate uploads to Google Drive.
+* **☁️ Google Drive Integration:** Utilizes Google OAuth2 for secure uploads with chunked progress tracking.
+* **🗑️ Automatic Retention:** Keeps only the last `N` backups on Google Drive, automatically purging older ones to save storage.
 * **🔔 Native Notifications:** Integrates with `libnotify` to trigger desktop pop-ups (compatible with Hyprland, Sway, etc.).
 
 ---
@@ -23,49 +25,88 @@ Built for Linux environments, it features automated timestamp formatting, data r
 
 ### 1. Clone the repository
 ```bash
-git clone [https://github.com/GuilhermeDePaula7/gtnh-cloud-sync.git](https://github.com/GuilhermeDePaula7/gtnh-cloud-sync.git)
+git clone https://github.com/GuilhermeDePaula7/gtnh-cloud-sync.git
 cd gtnh-cloud-sync
+```
 
-2. Set up the Environment
-Bash
-
+### 2. Set up the Environment
+```bash
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+```
 
-3. Configure Google Drive API
+### 3. Configure Google Drive API
+1. Go to the Google Cloud Console.
+2. Create a new project and enable the Google Drive API.
+3. Go to **OAuth consent screen**, select **External**, and add your email as a **Test User**.
+4. Go to **Credentials > Create Credentials > OAuth client ID > Desktop app**.
+5. Download the JSON file, rename it to `credentials.json`, and place it in the root of this project.
 
-    Go to the Google Cloud Console.
+### 4. Configure Environment Variables (`.env`)
+Copy `.env.example` to `.env` and fill in your Google Drive folder ID and Prism Launcher instance name:
+```bash
+cp .env.example .env
+```
 
-    Create a new project and enable the Google Drive API.
+### 5. Install the CLI
+Install the package in editable mode within your environment:
+```bash
+pip install -e .
+```
+This registers the `gtnh` command directly. (Alternatively, you can install globally with `pipx install .` or link `venv/bin/gtnh` into `~/.local/bin/`).
 
-    Go to OAuth consent screen, select External, and add your email as a Test User.
+---
 
-    Go to Credentials > Create Credentials > OAuth client ID > Desktop app.
+## 💻 Usage
 
-    Download the JSON file, rename it to credentials.json, and place it in the root of this project.
+```bash
+# Upload the latest backup to Google Drive (with duplicate check & retention)
+gtnh backup push
+# (alias: gtnh backup start)
 
-4. Update Script Variables
+# List all backups available in Google Drive
+gtnh backup list
 
-Open sync.py and replace DRIVE_FOLDER_ID with the actual ID of your target Google Drive folder. You can also adjust the INSTANCE_NAME if your Prism Launcher folder is named differently.
-5. Set up the CLI Command
+# Download the latest backup from Google Drive to your instance folder
+gtnh backup pull
 
-Create an executable script in your local binaries folder (e.g., ~/.local/bin/gtnh) to trigger the Python script globally:
-Bash
+# Download a specific backup by file ID or name
+gtnh backup pull --id "<DRIVE_FILE_ID>"
+gtnh backup pull --name "10-11-26-GTNH-2.9-Beta2.zip"
 
-#!/bin/bash
-if [ "$1" == "backup" ] && [ "$2" == "start" ]; then
-    ~/path/to/gtnh-cloud-sync/venv/bin/python ~/path/to/gtnh-cloud-sync/sync.py
-else
-    echo "Usage: gtnh backup start"
-fi
+# Download to a custom directory
+gtnh backup pull -o ~/Downloads
 
-Run chmod +x ~/.local/bin/gtnh to make it executable.
-💻 Usage
+# List local Prism Launcher instances
+gtnh prism instances
 
-Run the following command from anywhere in your terminal:
-Bash
+# Check current post-exit hook status
+gtnh prism status
 
-gtnh backup start
+# Automatically configure Prism Launcher to backup every time you close Minecraft
+gtnh prism install-hook
+```
 
-    Note: The first time you run this command, a browser window will open asking you to authenticate with your Google account. A token.json file will be generated locally, and all future backups will run silently in the background.
+> **Note:** The first time you run a command requiring Google Drive access, a browser window will open asking you to authenticate. A `token.json` file will be generated locally, and all future commands will run silently in the background.
+
+---
+
+## 🎮 Prism Launcher Auto-Sync Hook
+
+To automatically trigger a backup to Google Drive every time you close GregTech: New Horizons:
+
+```bash
+gtnh prism install-hook
+```
+
+This writes `PostExitCommand=gtnh backup push` into the instance's `instance.cfg`. When the game exits, Prism Launcher executes the command in the background, syncing your world and notifying you natively via Hyprland/Sway.
+
+---
+
+## 🧪 Running Tests
+
+To run the automated test suite:
+```bash
+./venv/bin/pytest -v
+```

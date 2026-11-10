@@ -1,12 +1,12 @@
+# Environment & Python
 venv/
 .env
 __pycache__/
-*.json
+.pytest_cache/
+*.egg-info/
+dist/
+build/
 
-# Google Drive API
+# Google Drive API secrets
 credentials.json
 token.json
-
-# Python
-venv/
-__pycache__/

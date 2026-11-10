@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gtnh-cloud-sync"
+version = "0.2.0"
+description = "Automated backup tool for Prism Launcher / GTNH instances to Google Drive"
+readme = "README.md"
+authors = [
+    { name = "Guilherme de Paula" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "google-api-python-client>=2.100.0",
+    "google-auth-httplib2>=0.1.1",
+    "google-auth-oauthlib>=1.1.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[project.scripts]
+gtnh = "cli:cli_entrypoint"
+
+[tool.setuptools]
+py-modules = ["sync", "cli", "prism"]
